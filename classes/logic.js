@@ -69,7 +69,7 @@ class Logic {
 
 		try {
 			var data = []
-			const response = await api.call('nodes/verify', postData)
+			await api.call('nodes/verify', postData)
 				.then(response => {
 					data = response;
 				})
@@ -89,10 +89,16 @@ class Logic {
 			}
 
 			// Fetching stats
-			const { url, ownerUid, ownerUsername, lastOperation, nodename, allocation } = data;
+			const { url, ownerUid, ownerUsername, lastOperation, nodename, allocation, active } = data;
 
 			logs.log(`Authenticated node as ${nodename} (${url}) owned by ${ownerUsername} (${ownerUid})`);
 			logs.log(`Last operation occurred at ${lastOperation} (${Math.round((Date.now() / 1000) - lastOperation)} seconds ago)`);
+
+			if(active === 0) {
+				logs.log('Node is marked as inactive. Skipping operations...', true);
+				logs.transmitLogs(auth, secret, this.taskList);
+				return;
+			}
 
 			// Process actions
 			const actions = data.actions;
@@ -129,6 +135,11 @@ class Logic {
 
 	setup(app) {
 		app.use(express.static(path.join(__dirname, "../", 'public')));
+
+		app.get("/health", (_, res) => {
+			logs.log("Health check received. Responding OK.");
+			res.status(200).send("OK");
+		});
 
 		// Fallback route to handle dynamic paths manually
 		app.get('/*', (req, res) => {
