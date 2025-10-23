@@ -18,6 +18,9 @@ EXPOSE 3000
 
 # Specify default environment variables (can be overridden by Docker Compose or Docker command)
 ENV NODE_ENV=production
+ENV AUTH=printscreen_auth
+ENV SECRET=printscreen_secret
+ENV PUBLIC_FOLDER=public
 ENV PORT=3000
 
 # Command to run the app
