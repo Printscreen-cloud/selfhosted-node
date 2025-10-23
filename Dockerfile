@@ -24,4 +24,4 @@ ENV PUBLIC_FOLDER=public
 ENV PORT=3000
 
 # Command to run the app
-CMD [ "npm", "start" ]
+CMD [ "node", "index.js" ]
