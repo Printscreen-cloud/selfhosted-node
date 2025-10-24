@@ -13,9 +13,10 @@ class Logic {
 	taskList = [];
 
 	async moveFile(fileFolder, fullUrl, targetFile, uid) {
-		if (!fs.existsSync(fileFolder)) {
-			logs.log(`Creating folder ${fileFolder}`);
-			fs.mkdirSync(fileFolder, { recursive: true });
+		const fullPath = path.join(publicFolder, fileFolder);
+		if (!fs.existsSync(fullPath)) {
+			logs.log(`Creating folder ${fullPath}`);
+			fs.mkdirSync(fullPath, { recursive: true });
 		}
 
 		if (!fs.existsSync(targetFile)) {
@@ -73,7 +74,7 @@ class Logic {
 				.then(response => {
 					data = response;
 				})
-				.catch(error => console.error('Error transmitting logs:', error));
+				.catch(error => console.error('Error authenticating:', error));
 
 
 			// No data or wrong data received
@@ -84,7 +85,8 @@ class Logic {
 
 			// API didn't accept credentials
 			if (!data.success) {
-				logs.log('Authentication with Printscreen main node failed. Invalid credentials!', true);
+				logs.log('Authentication with Printscreen main node failed!', true);
+				logs.log(data, true);
 				return;
 			}
 
@@ -105,14 +107,14 @@ class Logic {
 			logs.log(`Found ${actions.length} task(s) to work on...`);
 
 			actions.forEach(async (row) => {
-				const { uid, file, ownerUid, extension, createdAt, path: filePath, url } = JSON.parse(row.data);
-				const fileFolder = path.join(publicFolder, filePath);
-				const fullUrl = `https://${url}/${filePath}/${file}.${extension}`;
-				const targetFile = path.join(fileFolder, `${file}.${extension}`);
+				const { uid, file, folder, filename, extension, hostnode, hostdomain } = row.data;
+				const fileFolder = path.join(publicFolder, folder);
+				const fullUrl = `http://${hostdomain}/${folder}/${filename}.${extension}`;
+				const targetFile = path.join(fileFolder, `${filename}.${extension}`);
 
 				switch (row.type) {
 					case 'move':
-						this.moveFile(fileFolder, fullUrl, targetFile, uid);
+						this.moveFile(folder, fullUrl, targetFile, uid);
 						break;
 
 					case 'delete':
@@ -155,11 +157,12 @@ class Logic {
 				}
 			});
 		});
-
+/*
 		if (!fs.existsSync(publicFolder)) {
 			logs.log('Folder public missing. Creating...');
 			fs.mkdirSync(publicFolder);
 		}
+*/
 	}
 }
 
