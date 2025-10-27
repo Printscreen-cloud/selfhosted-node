@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicFolder = path.join(__dirname, "../", 'public');
 
 class Logic {
-	taskList = [];
+	taskList = {};
 
 	async moveFile(fileFolder, fullUrl, targetFile, uid) {
 		const fullPath = path.join(publicFolder, fileFolder);
@@ -22,6 +22,7 @@ class Logic {
 		if (!fs.existsSync(targetFile)) {
 			try {
 				const fileResponse = await axios.get(fullUrl, { responseType: 'arraybuffer' });
+
 				fs.writeFileSync(targetFile, fileResponse.data);
 				logs.log(`[${uid}] Processed file ${targetFile}`);
 				this.taskList[uid] = true;
@@ -38,6 +39,8 @@ class Logic {
 			fs.unlinkSync(targetFile);
 			logs.log(`[${uid}] Deleted file ${targetFile}`, true);
 			this.taskList[uid] = true;
+		} else {
+			logs.log(`[${uid}] File to delete does not exist. Skipping...`, true);
 		}
 	}
 
@@ -106,7 +109,7 @@ class Logic {
 			const actions = data.actions;
 			logs.log(`Found ${actions.length} task(s) to work on...`);
 
-			actions.forEach(async (row) => {
+			await Promise.all(actions.map(async (row) => {
 				const { uid, file, folder, filename, extension, hostnode, hostdomain } = row.data;
 				const fileFolder = path.join(publicFolder, folder);
 				const fullUrl = `http://${hostdomain}/${folder}/${filename}.${extension}`;
@@ -114,19 +117,19 @@ class Logic {
 
 				switch (row.type) {
 					case 'move':
-						this.moveFile(folder, fullUrl, targetFile, uid);
+						await this.moveFile(folder, fullUrl, targetFile, uid);
 						break;
 
 					case 'delete':
-						this.delete(targetFile, uid);
+						await this.delete(targetFile, uid);
 						break;
 
 					default:
 						break;
 				}
-			});
+			}));
 
-			logs.transmitLogs(auth, secret, this.taskList);
+			await logs.transmitLogs(auth, secret, this.taskList);
 		} catch (error) {
 			logs.log(error);
 			logs.log('Error communicating with Printscreen main node:', true);

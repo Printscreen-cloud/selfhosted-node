@@ -9,12 +9,12 @@ class Logs {
 		this.logs += `${prefix}| ${t}<br>`;
 	}
 
-	transmitLogs(auth, secret, taskList = {}) {
+	async transmitLogs(auth, secret, taskList) {
 		const postData = {
 			auth: auth,
 			secret: secret,
 			logs: this.logs,
-			taskList: JSON.stringify(taskList),
+			taskList: taskList,
 		};
 
 		api.call('node/submit/', postData)
