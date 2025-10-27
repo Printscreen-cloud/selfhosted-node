@@ -130,6 +130,7 @@ class Logic {
 			}));
 
 			await logs.transmitLogs(auth, secret, this.taskList);
+			this.taskList = {};
 		} catch (error) {
 			logs.log(error);
 			logs.log('Error communicating with Printscreen main node:', true);
