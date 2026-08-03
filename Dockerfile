@@ -1,27 +1,24 @@
-# Use an official Node.js runtime as a parent image
-FROM node:18
+FROM node:24-alpine AS dependencies
 
-# Set working directory in the container
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json into the container
 COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Install dependencies
-RUN npm install --production
+FROM gcr.io/distroless/nodejs24-debian13:nonroot@sha256:af85d11ce7ef10172855a6e3649e3e8125b1b9e3ca41849ec2918036f05cb212
 
-# Copy the rest of the app's source code into the container
-COPY . .
+WORKDIR /usr/src/app
 
-# Expose the port the app will run on
+ENV NODE_ENV=production \
+    PUBLIC_FOLDER=public \
+    PORT=3000
+
+COPY --from=dependencies --chown=65532:65532 /usr/src/app/node_modules ./node_modules
+COPY --chown=65532:65532 package.json index.js version.txt ./
+COPY --chown=65532:65532 classes ./classes
+
 EXPOSE 3000
 
-# Specify default environment variables (can be overridden by Docker Compose or Docker command)
-ENV NODE_ENV=production
-ENV AUTH=printscreen_auth
-ENV SECRET=printscreen_secret
-ENV PUBLIC_FOLDER=public
-ENV PORT=3000
+USER 65532:65532
 
-# Command to run the app
-CMD [ "node", "index.js" ]
+CMD ["index.js"]

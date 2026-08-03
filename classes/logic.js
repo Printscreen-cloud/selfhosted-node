@@ -7,13 +7,25 @@ import storage from './storage.js';
 import logs from './logs.js';
 import api from './api.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const publicFolder = path.join(__dirname, "../", 'public');
+const appRoot = path.resolve(__dirname, '..');
+const publicFolder = path.resolve(appRoot, process.env.PUBLIC_FOLDER || 'public');
 
 class Logic {
 	taskList = {};
 
+	resolvePublicPath(...segments) {
+		const resolved = path.resolve(publicFolder, ...segments);
+		const relative = path.relative(publicFolder, resolved);
+
+		if (relative.startsWith('..') || path.isAbsolute(relative)) {
+			throw new Error('Refusing path outside the public folder');
+		}
+
+		return resolved;
+	}
+
 	async moveFile(fileFolder, fullUrl, targetFile, uid) {
-		const fullPath = path.join(publicFolder, fileFolder);
+		const fullPath = this.resolvePublicPath(fileFolder);
 		if (!fs.existsSync(fullPath)) {
 			logs.log(`Creating folder ${fullPath}`);
 			fs.mkdirSync(fullPath, { recursive: true });
@@ -27,7 +39,7 @@ class Logic {
 				logs.log(`[${uid}] Processed file ${targetFile}`);
 				this.taskList[uid] = true;
 			} catch (error) {
-				logs.log(`[${uid}] Could not fetch file. HTTP Error: ${error.response.status}`, true);
+				logs.log(`[${uid}] Could not fetch file. HTTP Error: ${error.response?.status || error.message}`, true);
 			}
 		} else {
 			logs.log(`[${uid}] Target file already exists. Skipping...`, true);
@@ -110,10 +122,9 @@ class Logic {
 			logs.log(`Found ${actions.length} task(s) to work on...`);
 
 			await Promise.all(actions.map(async (row) => {
-				const { uid, file, folder, filename, extension, hostnode, hostdomain } = row.data;
-				const fileFolder = path.join(publicFolder, folder);
+				const { uid, folder, filename, extension, hostdomain } = row.data;
 				const fullUrl = `http://${hostdomain}/${folder}/${filename}.${extension}`;
-				const targetFile = path.join(fileFolder, `${filename}.${extension}`);
+				const targetFile = this.resolvePublicPath(folder, `${filename}.${extension}`);
 
 				switch (row.type) {
 					case 'move':
@@ -134,7 +145,7 @@ class Logic {
 		} catch (error) {
 			logs.log(error);
 			logs.log('Error communicating with Printscreen main node:', true);
-			if (!error.response.data.error) return;
+			if (!error.response?.data?.error) return;
 			logs.log(error.response.data.error, true);
 		}
 	}
@@ -161,6 +172,7 @@ class Logic {
 				}
 			});
 		});
+
 /*
 		if (!fs.existsSync(publicFolder)) {
 			logs.log('Folder public missing. Creating...');

@@ -5,27 +5,35 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to DockerHub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Build Docker image
-        run: docker build -t ${{ github.repository }} .
+        env:
+          IMAGE: ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}
+        run: docker build --tag "$IMAGE:${{ github.sha }}" .
 
-      - name: Tag Docker image
-        run: docker tag ${{ github.repository }} ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:latest
 
-      - name: Push Docker image
-        run: docker push ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:latest
+      - name: Push immutable and latest tags
+        env:
+          IMAGE: ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}
+        run: |
+          docker push "$IMAGE:${{ github.sha }}"
+          docker tag "$IMAGE:${{ github.sha }}" "$IMAGE:latest"
+          docker push "$IMAGE:latest"

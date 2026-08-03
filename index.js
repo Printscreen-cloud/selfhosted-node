@@ -1,15 +1,22 @@
+import 'dotenv/config';
 import express from 'express';
 import logs from './classes/logs.js';
 import logic from './classes/logic.js';
 import fs from 'fs';
 
 const app = express();
-const port = process.env.PORT || 3001;
-
-// Define API keys
-const auth = process.env.AUTH || "9Yw1-asLyCxyikksejiGu";
-const secret = process.env.SECRET || "2ba7c7c7146f290bb34e82a640f22d22:add30cdf8cd9f4da3c5c3e9a7d9ad55871b01366b646b3d54127c81feb150c71";
+const port = Number.parseInt(process.env.PORT || '3000', 10);
+const auth = process.env.AUTH;
+const secret = process.env.SECRET;
 const version = fs.readFileSync('./version.txt', 'utf8').trim();
+
+if (!auth || !secret) {
+	throw new Error('AUTH and SECRET must be provided through the environment');
+}
+
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+	throw new Error('PORT must be a valid TCP port');
+}
 
 await logic.setup(app);
 logic.loop(auth, secret, version);
